@@ -34,13 +34,14 @@ docker run -p 5500:5500 money-transfer
 
 ### Интеграционные тесты Spring Boot
 - `TransferIntegrationTest` - тестирование полного стека приложения
+
+### Интеграционные тесты Testcontainers
 - `DockerContainerTest` - тестирование с Docker контейнерами
 
 **Запуск всех тестов:**
 ```bash
 ./gradlew test
 ```
-
 ## Интеграция с FRONT
 ### API настроено на порт 5500 для совместимости с FRONT приложением из репозитория:
 https://github.com/serp-ya/card-transfer
