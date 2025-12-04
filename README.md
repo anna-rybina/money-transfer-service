@@ -32,11 +32,14 @@ docker run -p 5500:5500 money-transfer
 - `TransferServiceTest` - тестирование бизнес-логики перевода
 - `LoggingServiceTest` - тестирование сервиса логирования
 
-### Интеграционные тесты Spring Boot
-- `TransferIntegrationTest` - тестирование полного стека приложения
-
 ### Интеграционные тесты Testcontainers
-- `DockerContainerTest` - тестирование с Docker контейнерами
+
+- `DockerContainerTest` - базовый тест работы Docker контейнеров
+- `TransferServiceContainerTest` - интеграционный тест приложения в Docker:
+    - Запускает собранный Docker образ `myapp:latest`
+    - Проверяет доступность health endpoint (`/api/health`)
+    - Тестирует работу Spring Boot приложения в изолированной среде
+    - Использует реальный порт 5500 внутри контейнера
 
 **Запуск всех тестов:**
 ```bash
