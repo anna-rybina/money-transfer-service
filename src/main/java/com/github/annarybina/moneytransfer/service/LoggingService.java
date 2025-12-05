@@ -1,6 +1,7 @@
 package com.github.annarybina.moneytransfer.service;
 
 import com.github.annarybina.moneytransfer.model.TransferRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.FileWriter;
@@ -16,31 +17,39 @@ public class LoggingService {
     private static final DateTimeFormatter formatter =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    public void logTransfer(TransferRequest request, String operationId, String status, double commission) {
-        String logEntry = String.format(
-                "%s | From: %s | To: %s | Amount: %d %s | Commission: %.2f | Result: %s | OperationID: %s",
-                LocalDateTime.now().format(formatter),
-                request.getCardFromNumber(),
-                request.getCardToNumber(),
-                request.getAmount().getValue(),
-                request.getAmount().getCurrency(),
-                commission,
-                status,
-                operationId
-        );
+    @Value("${logging.format}")
+    private String logFormat;
 
-        // Запись в файл
+    public void logTransfer(TransferRequest request, String operationId,
+                            String status, double commission) {
+
+        String timestamp = LocalDateTime.now().format(formatter);
+        String logEntry = logFormat
+                .replace("{timestamp}", timestamp)
+                .replace("{cardFrom}", maskCardNumber(request.getCardFromNumber()))
+                .replace("{cardTo}", maskCardNumber(request.getCardToNumber()))
+                .replace("{amount}", String.valueOf(request.getAmount().getValue()))
+                .replace("{currency}", request.getAmount().getCurrency())
+                .replace("{commission}", String.format("%.2f", commission))
+                .replace("{status}", status)
+                .replace("{operationId}", operationId);
+
+        writeToFile(logEntry);
+        System.out.println("Logged: " + logEntry);
+    }
+
+    private void writeToFile(String logEntry) {
         try (PrintWriter out = new PrintWriter(new FileWriter(LOG_FILE, true))) {
             out.println(logEntry);
         } catch (IOException e) {
             System.err.println("Error writing to log file: " + e.getMessage());
         }
-
-        System.out.println("Logged: " + logEntry);
     }
 
-    // Старый метод для обратной совместимости (если нужно)
-    public void logTransfer(TransferRequest request, String operationId, String status) {
-        logTransfer(request, operationId, status, 0.0);
+    private String maskCardNumber(String cardNumber) {
+        if (cardNumber == null || cardNumber.length() < 12) {
+            return cardNumber;
+        }
+        return cardNumber.substring(0, 6) + "******" + cardNumber.substring(12);
     }
 }

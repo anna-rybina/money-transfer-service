@@ -1,7 +1,7 @@
 package com.github.annarybina.moneytransfer.service;
 
+import com.github.annarybina.moneytransfer.exception.InvalidInputException;
 import com.github.annarybina.moneytransfer.model.TransferRequest;
-import com.github.annarybina.moneytransfer.model.TransferResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -22,113 +22,57 @@ class TransferServiceTest {
     private TransferService transferService;
 
     @Test
-    void testTransferSuccess() {
+    void testInitiateTransferSuccess() {
         // given
         TransferRequest request = createValidRequest();
 
         // when
-        TransferResponse response = transferService.transfer(request);
+        String operationId = transferService.initiateTransfer(request);
 
         // then
-        assertNotNull(response);
-        assertEquals("0000", response.getCode());
-        assertEquals("Success", response.getMessage());
-        assertNotNull(response.getOperationId());
-
-        // Проверяем что комиссия 1% от 10000 = 100.0
+        assertNotNull(operationId);
         verify(loggingService, times(1))
-                .logTransfer(eq(request), anyString(), eq("SUCCESS"), eq(100.0));
+                .logTransfer(eq(request), eq(operationId), eq("PENDING"), eq(0.0));
     }
 
     @Test
-    void testTransferSameCards() {
+    void testInitiateTransferSameCard() {
         // given
         TransferRequest request = createValidRequest();
-        request.setCardToNumber(request.getCardFromNumber()); // одинаковые карты
+        request.setCardToNumber(request.getCardFromNumber());
 
-        // when
-        TransferResponse response = transferService.transfer(request);
-
-        // then
-        assertNotNull(response);
-        assertEquals("4001", response.getCode());
-        assertTrue(response.getMessage().toLowerCase().contains("same"));
-
-        verify(loggingService, times(1))
-                .logTransfer(eq(request), anyString(), contains("FAILED"), eq(0.0));
+        // when & then
+        InvalidInputException exception = assertThrows(InvalidInputException.class,
+                () -> transferService.initiateTransfer(request));
+        assertEquals(4001, exception.getErrorId());
+        assertEquals("Cannot transfer to the same card", exception.getMessage());
     }
 
     @Test
-    void testTransferNegativeAmount() {
+    void testConfirmOperationSuccess() {
         // given
         TransferRequest request = createValidRequest();
-        request.getAmount().setValue(-100); // отрицательная сумма
+        String operationId = transferService.initiateTransfer(request);
 
         // when
-        TransferResponse response = transferService.transfer(request);
+        String confirmedId = transferService.confirmOperation(operationId, "0000");
 
         // then
-        assertNotNull(response);
-        assertEquals("4002", response.getCode());
-        assertTrue(response.getMessage().toLowerCase().contains("positive"));
-
+        assertEquals(operationId, confirmedId);
         verify(loggingService, times(1))
-                .logTransfer(eq(request), anyString(), contains("FAILED"), eq(0.0));
+                .logTransfer(eq(request), eq(operationId), eq("SUCCESS"), eq(100.0));
     }
 
     @Test
-    void testTransferZeroAmount() {
+    void testConfirmOperationInvalidCode() {
         // given
         TransferRequest request = createValidRequest();
-        request.getAmount().setValue(0); // нулевая сумма
+        String operationId = transferService.initiateTransfer(request);
 
-        // when
-        TransferResponse response = transferService.transfer(request);
-
-        // then
-        assertNotNull(response);
-        assertEquals("4002", response.getCode());
-        assertTrue(response.getMessage().toLowerCase().contains("positive"));
-
-        verify(loggingService, times(1))
-                .logTransfer(eq(request), anyString(), contains("FAILED"), eq(0.0));
-    }
-
-    @Test
-    void testTransferLargeAmount() {
-        // given
-        TransferRequest request = createValidRequest();
-        request.getAmount().setValue(1_000_000_01); // больше 1 миллиона
-
-        // when
-        TransferResponse response = transferService.transfer(request);
-
-        // then
-        assertNotNull(response);
-        assertEquals("4003", response.getCode());
-        assertTrue(response.getMessage().toLowerCase().contains("limit") ||
-                response.getMessage().toLowerCase().contains("maximum"));
-
-        verify(loggingService, times(1))
-                .logTransfer(eq(request), anyString(), contains("FAILED"), eq(0.0));
-    }
-
-    @Test
-    void testTransferCommissionCalculation() {
-        // given
-        TransferRequest request = createValidRequest();
-        request.getAmount().setValue(5000); // 5000 рублей
-
-        // when
-        TransferResponse response = transferService.transfer(request);
-
-        // then
-        assertNotNull(response);
-        assertEquals("0000", response.getCode());
-
-        // Проверяем что комиссия 1% от 5000 = 50.0
-        verify(loggingService, times(1))
-                .logTransfer(eq(request), anyString(), eq("SUCCESS"), eq(50.0));
+        // when & then
+        InvalidInputException exception = assertThrows(InvalidInputException.class,
+                () -> transferService.confirmOperation(operationId, "9999"));
+        assertEquals(4007, exception.getErrorId());
     }
 
     private TransferRequest createValidRequest() {

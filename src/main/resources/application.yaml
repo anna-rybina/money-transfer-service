@@ -1,10 +1,9 @@
 server:
-  port: 5500
+  port: 8080
 
 spring:
   application:
     name: money-transfer-service
 
 logging:
-  file:
-    name: transfer.log
+  format: "{timestamp} | From: {cardFrom} | To: {cardTo} | Amount: {amount} {currency} | Commission: {commission} | Status: {status} | OperationID: {operationId}"

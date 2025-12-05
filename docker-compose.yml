@@ -2,5 +2,8 @@ version: '3.8'
 services:
   backend:
     build: .
+    image: money-transfer-service:1.0
     ports:
-      - '5500:5500'
+      - '8080:8080'
+    volumes:
+      - ./transfer.log:/app/transfer.log
